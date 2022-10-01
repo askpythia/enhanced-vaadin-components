@@ -1,0 +1,653 @@
+package at.metainfo.tabbedView;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Optional;
+import java.util.Set;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Supplier;
+import java.util.stream.Collectors;
+
+import com.vaadin.flow.component.Component;
+import com.vaadin.flow.component.HasComponents;
+import com.vaadin.flow.component.dnd.DragSource;
+import com.vaadin.flow.component.dnd.DropEffect;
+import com.vaadin.flow.component.dnd.DropTarget;
+import com.vaadin.flow.component.dnd.EffectAllowed;
+import com.vaadin.flow.component.html.Div;
+import com.vaadin.flow.component.html.Image;
+import com.vaadin.flow.component.icon.Icon;
+import com.vaadin.flow.component.icon.IconFactory;
+import com.vaadin.flow.component.icon.VaadinIcon;
+import com.vaadin.flow.component.notification.Notification;
+import com.vaadin.flow.component.notification.Notification.Position;
+import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
+import com.vaadin.flow.component.orderedlayout.VerticalLayout;
+import com.vaadin.flow.component.tabs.Tabs;
+import com.vaadin.flow.dom.DomEventListener;
+import com.vaadin.flow.shared.Registration;
+
+import at.metainfo.utilities.IGuiUtilities;
+import at.metainfo.utilities.NlsLabel;
+
+public class TabbedView extends VerticalLayout implements IGuiUtilities {
+	private static final long serialVersionUID = 1L;
+
+	private Tabs tabs;
+	private DropTarget<Tabs> tabsDropTarget;
+	private Div contents;
+	private HorizontalLayout toolbars;
+	private Div headers;
+	private Div footers;
+	private HorizontalLayout toolbar; 
+	private HorizontalLayout topBar;
+	private EnhancedViewData activeData;
+	private Map<Tab, EnhancedViewData> tabData = new LinkedHashMap<>();
+	private Map<Tab, Registration> tabToRegistration = new HashMap<>();
+	private List<Consumer<SelectedChangeEvent>> tabSelectionListener = new ArrayList<>();
+	private List<Consumer<Boolean>> tabsOpenCloseListener = new ArrayList<>();
+	private boolean draggable = false;
+	private boolean dropTarget = false;
+	private Component minimize_handle = null;
+	private Component maximize_handle = null;
+	private Function<TabbedViewIcon, Component> iconProvider;
+
+	public enum TabbedViewIcon {
+		tabCloseIcon(() -> {
+			//Icon icon = VaadinIcon.CLOSE.create();
+			Icon icon = new Icon("lumo", "cross");
+			icon.setColor(DEFAULT_ICON_COLOR);
+			icon.getStyle().set("cursor", "pointer");
+			return icon;
+		}),
+		tabsMinimizeIcon(() -> {
+			//return new Icons8("minus-square").size("24px").color("#990000");
+			Icon icon = new Icon("vaadin", "minus-circle-o");
+			icon.setSize(DEFAULT_ICON_SIZE);
+			icon.setColor(DEFAULT_ICON_COLOR);
+			icon.getStyle().set("cursor", "pointer");
+			return icon;
+		}),
+		tabsMaximizeIcon(() -> {
+			//return new Icons8("plus-square").size("24px").color("#990000");
+			Icon icon = new Icon("vaadin", "plus-circle-o");
+			icon.setSize(DEFAULT_ICON_SIZE);
+			icon.setColor(DEFAULT_ICON_COLOR);
+			icon.getStyle().set("cursor", "pointer");
+			return icon;
+		}),
+		tabsCloseIcon(() -> {
+			//return new Icons8("plus-square").size("24px").color("#990000");
+			Icon icon = new Icon("vaadin", "close-circle-o");
+			icon.setSize(DEFAULT_ICON_SIZE);
+			icon.setColor(DEFAULT_ICON_COLOR);
+			icon.getStyle().set("cursor", "pointer");
+			return icon;
+		}),
+		;
+
+		private final Supplier<Object> default_;
+
+		private TabbedViewIcon(Supplier<Object> default_) {
+			this.default_ = default_;
+		}
+
+		public Component getIconComponent() {
+			Object object = default_.get();
+			if(object instanceof String) {
+				return new Image((String)object, name());
+			} else if(object instanceof IconFactory) {
+				return ((IconFactory)object).create();
+			} else if(object instanceof Component){
+				return (Component)object;
+			} else {
+				return VaadinIcon.QUESTION.create();
+			}
+		}
+	}
+
+	@SuppressWarnings("serial")
+	public static class Tab extends com.vaadin.flow.component.tabs.Tab implements DragSource<Tab>, DropTarget<Tab> {
+
+		private String labelOrId;
+
+		public Tab(String labelOrId, Component... components) {
+			super(components);
+			this.labelOrId = labelOrId;
+			if(components.length == 0) {
+				setLabel(labelOrId);
+			}
+		}
+
+		public String getLabelOrId() {
+			return labelOrId;
+		}
+
+		public EnhancedViewData data() {
+			return tabbedView(this).getTabData(this);
+		}
+
+		public void close() {
+			tabbedView(this).closeTabDelayed(this);
+		}
+
+		@Override
+		public String toString() {
+			return "TAB " + labelOrId;
+		}
+	}
+
+	@SuppressWarnings("serial")
+	public static class SelectedChangeEvent extends Tabs.SelectedChangeEvent {
+
+		public SelectedChangeEvent(Tabs.SelectedChangeEvent event) {
+			super(event.getSource(), event.getPreviousTab(), event.isFromClient());
+		}
+
+		@Override
+		public Tab getPreviousTab() {
+			return (Tab)super.getPreviousTab();
+		}
+
+		@Override
+		public Tab getSelectedTab() {
+			return (Tab)super.getSelectedTab();
+		}
+	}
+
+	private static TabbedView tabbedView(Tab tab) {
+		Component par = tab.getParent().orElse(null);
+		while (par != null && !(par instanceof TabbedView)) {
+				par = par.getParent().orElse(null);
+		}
+		return (TabbedView)par;
+	}
+
+	public TabbedView() {
+		this(null);
+	}
+
+	public TabbedView(Function<TabbedViewIcon, Component> iconProvider) {
+		this.iconProvider = iconProvider == null ? key -> key.getIconComponent() : iconProvider;
+		setSizeFull();
+		setPadding(false);
+		initializeTabs();
+		initialize();
+	}
+
+	private void initializeTabs() {
+		tabs = new Tabs();
+		tabs.setWidthFull();
+		tabs.addSelectedChangeListener(event -> selectedChanged(new SelectedChangeEvent(event)));
+		toolbars = toolbar();
+		addToolbarStyle(toolbars);
+		toolbar = toolbar();
+		addToolbarStyle(toolbar);
+
+		DomEventListener listener = event -> switchMinimized();
+		minimize_handle = getIcon(TabbedViewIcon.tabsMinimizeIcon);
+		minimize_handle.getElement().addEventListener("click", listener); 
+		maximize_handle = getIcon(TabbedViewIcon.tabsMaximizeIcon);
+		maximize_handle.getElement().addEventListener("click", listener);
+
+		topBar = new HorizontalLayout(tabs, toolbars, toolbar);
+		topBar.setMargin(false);
+		topBar.setPadding(false);
+		topBar.setWidthFull();
+		contents = new Div();
+		contents.setSizeFull();
+		initializeDropTarget();
+		add(topBar, contents);
+	}
+
+	private void selectedChanged(SelectedChangeEvent event) {
+		Tab selectedTab = event.getSelectedTab();
+
+		if(activeData != null) {
+			activeData.setVisible(false);
+		}
+
+		EnhancedViewData selectedData = getTabData(selectedTab);
+		if(selectedData != null) {
+			addData(selectedData);
+			selectedData.setVisible(true);
+			activeData = selectedData;
+			tabSelectionListener.forEach(listener -> listener.accept(event));
+		}
+	}
+
+	private Component getIcon(TabbedViewIcon key) {
+		Component icon = iconProvider.apply(key);
+		return icon == null ? key.getIconComponent() : icon;
+	}
+
+	private void addToolbarStyle(Component component) {
+		//component.getElement().getStyle().set("margin-left", "0");
+		component.getElement().getStyle().set("box-shadow", "inset 0 -1px 0 0 var(--lumo-contrast-10pct)");
+	}
+
+	private void initializeDropTarget() {
+		tabsDropTarget = DropTarget.configure(tabs);
+		tabsDropTarget.setDropEffect(DropEffect.MOVE);
+		tabsDropTarget.addDropListener(event -> {
+			if(event.getDragSourceComponent().isPresent()) {
+				var data = event.getDragSourceComponent().get();
+				if(data instanceof Tab) {
+					moveTab((Tab)data, null);
+				}
+			}
+		});
+	}
+
+	protected void initialize() {
+		// Override to add initializations if needed
+	}
+
+	public boolean isDraggable() {
+		return draggable;
+	}
+
+	public void setDraggable(boolean draggable) {
+		if(this.draggable != draggable) {
+			this.draggable = draggable;
+			getAllTabs().forEach(t -> t.setDraggable(draggable));
+		}
+	}
+
+	public boolean isDropTarget() {
+		return dropTarget;
+	}
+
+	public void setGlobalTarget(boolean globalTarget) {
+		if(this.dropTarget != globalTarget) {
+			this.dropTarget = globalTarget;
+			tabsDropTarget.setActive(globalTarget);
+			getAllTabs().forEach(t -> t.setActive(globalTarget));
+		}
+	}
+
+	public boolean isMinimizeable() {
+		return toolbar.getChildren().anyMatch(c -> c == minimize_handle || c == maximize_handle);
+	}
+
+	public void setMinimizeable(boolean minimizeable) {
+		if(minimizeable && !isMinimizeable()) {
+			toolbar.add(minimize_handle);
+		} else {
+			toolbar.remove(minimize_handle);
+			toolbar.remove(maximize_handle);
+		}
+	}
+
+	public void switchMinimizeable() {
+		setMinimizeable(!isMinimizeable());
+	}
+
+	public boolean isMinimized() {
+		return isMinimizeable() && toolbar.getChildren().anyMatch(c -> c == maximize_handle);
+	}
+
+	public void setMinimized(boolean minimize) {
+		if(isMinimizeable()) {
+			if(minimize) {
+				toolbar.remove(minimize_handle);
+				toolbar.add(maximize_handle);
+			} else {
+				toolbar.remove(maximize_handle);
+				toolbar.add(minimize_handle);
+			}
+			contents.setVisible(!minimize);
+			if(headers != null) headers.setVisible(!minimize);
+			if(footers != null) footers.setVisible(!minimize);
+			tabsOpenCloseListener.forEach(listener -> listener.accept(!minimize));
+		}
+	}
+
+	public void switchMinimized() {
+		setMinimized(!isMinimized());
+	}
+
+	public Set<Tab> getAllTabs() {
+		return tabData.keySet();
+	}
+
+	public Tab getActiveTab() {
+		return (Tab)tabs.getSelectedTab();
+	}
+
+	/**
+	 * Select given Tab (if object is Tab) or Tab with given Id (when object is String) or Tab associated to given Object
+	 * @param object
+	 */
+	public void selectTab(Object object) {
+		Tab tab = getTab(object);
+		if (tab != null) tabs.setSelectedTab(tab);
+	}
+
+	/**
+	 * Select given Tab (if object is Tab) or Tab with given Id (when object is String) or Tab associated to given Object
+	 * @param object
+	 */
+	public void closeTab(Object object) {
+		Tab tab = getTab(object);
+		if (tab != null) closeTabDelayed(tab);
+	}
+
+	public Registration addSelectedChangeListener(Consumer<SelectedChangeEvent> listener) {
+		tabSelectionListener.add(listener);
+		return Registration.once(() -> tabSelectionListener.remove(listener));
+	}
+
+	public Registration addTabsOpenCloseListener(Consumer<Boolean> listener) {
+		tabsOpenCloseListener.add(listener);
+		return Registration.once(() -> tabsOpenCloseListener.remove(listener));
+	}
+
+	public Tab addView(IEnhancedView enhancedView, Component... tabComponents) {
+		EnhancedViewData data = new EnhancedViewData(enhancedView);
+		Tab tab = createTab(data.getTitle(), enhancedView.close(null), tabComponents);
+		Component titleIcon = data.getTitleIcon();
+		if(titleIcon != null) {
+			titleIcon.getElement().getStyle().set("margin-right", "0.2rem");
+			tab.getElement().insertChild(0, titleIcon.getElement());
+		}
+		tabData.put(tab, data);
+		tabs.add(tab);
+		return tab;
+	}
+
+	public Tab addTab(String caption, Object object, Function<Closeable, Boolean> onClose, Component content, Component... tabComponents) {
+		if(content instanceof IEnhancedView) {
+			return addView((IEnhancedView)content, tabComponents);
+		} else {
+			return addTab(caption, object, onClose, () -> content, tabComponents);
+		}
+	}
+
+	public Tab addTab(String caption, Object object, Function<Closeable, Boolean> onClose, Supplier<Component> contentSupplier, Component... tabComponents) {
+		return addView(new IEnhancedView() {
+			@Override
+			public String title() {
+				return caption;
+			}
+			@Override
+			public Object object() {
+				return object;
+			}
+			@Override
+			public boolean close(Closeable closeable) {
+				return onClose.apply(closeable);
+			}
+			@Override
+			public Component createContent() {
+				return contentSupplier.get();
+			}
+		}, tabComponents);
+	}
+
+	public void reorderTabs(List<String> tabList, List<String> fixList) {
+		Map<String, Tab> tabMap = getTabIdMap();
+		List<String> currentIdList = new ArrayList<>(tabMap.keySet());
+		currentIdList.removeAll(fixList);
+		if(!currentIdList.equals(tabList)) {
+			Tab current = (Tab)tabs.getSelectedTab();
+			// Remove all tabs which should be ordered from tabs
+			for(String tabId : currentIdList) tabs.remove(tabMap.get(tabId));
+			// Prepare new TabData map
+			Map<Tab, EnhancedViewData> newTabData = new LinkedHashMap<>();
+			// Add all remaining fixes Tab's to new TabData
+			for(String tabId : fixList) {
+				Tab tab = tabMap.get(tabId);
+				newTabData.put(tab, getTabData(tab));
+			}
+			// Add remaining Tab's in new order to TabList and Tabs 
+			for(String tabId : tabList) {
+				Tab tab = tabMap.get(tabId);
+				tabs.add(tab);
+				newTabData.put(tab, getTabData(tab));
+			}
+			tabData = newTabData;
+			tabs.setSelectedTab(current);
+		}
+	}
+
+	public void resize() {
+		tabData.values().forEach(vd -> vd.resize());
+	}
+
+	public void reset() {
+		tabData.values().forEach(vd -> {
+			removeData(vd);
+			vd.reset();
+			if(vd == activeData) addData(vd);
+		});
+	}
+
+	private Tab createTab(String caption, boolean closeable, Component... tabComponents) {
+		boolean hasComponents = tabComponents != null && tabComponents.length > 0;
+		final Tab tab = hasComponents ? new Tab(caption, tabComponents) : new Tab(caption, new NlsLabel(caption));
+		if(closeable) {
+			Component close = getIcon(TabbedViewIcon.tabCloseIcon);
+			close.getElement().addEventListener("click", click -> {
+				tab.close();
+			});
+			tab.add(close);
+		}
+		tab.setEffectAllowed(EffectAllowed.MOVE);
+		tab.setDraggable(isDraggable());
+		tab.addDragStartListener(event -> {
+			TabbedView tabbedView = tabbedView(tab);
+			if(tabbedView != null) tabbedView.dragStart(tab);
+		});
+		tab.addDragEndListener(event -> {
+			TabbedView tabbedView = tabbedView(tab);
+			if(tabbedView != null) tabbedView.dragEnd(tab);
+		});
+		tabToRegistration.put(tab, addDropTarget(tab));
+		return tab;
+	}
+
+	private void moveTab(Tab tab, Tab destination) {
+		if(tab == destination) return;
+		TabbedView sourceView = tabbedView(tab);
+		if(sourceView != null) {
+			if(!isMoveAllowed(sourceView, tab)) return;
+			if(sourceView != this) {
+				var data = tab.data();
+				tabData.put(tab, data);
+				sourceView.closeTabInternal(tab, data);
+				addData(data);
+				tabs.add(tab);
+				tabToRegistration.put(tab, addDropTarget(tab));
+			}
+			if(destination != null || sourceView != this) {
+				List<String> idList = new ArrayList<>();
+				List<Tab> tabList = tabs.getChildren().filter(c -> c instanceof Tab).map(c -> (Tab)c).collect(Collectors.toList());
+				boolean moveRight = destination != null && tabList.indexOf(destination) > tabList.indexOf(tab);
+				for(var t : tabList) {
+					if(moveRight) {
+						if(t != tab) idList.add(t.getLabelOrId());
+						if(t == destination) idList.add(tab.getLabelOrId());
+					} else {
+						if(t == destination) idList.add(tab.getLabelOrId());
+						if(t != tab) idList.add(t.getLabelOrId());
+					}
+				}
+				if(destination == null) idList.add(tab.getLabelOrId());
+				reorderTabs(idList, new ArrayList<>());
+			}
+			tabs.setSelectedTab(tab);
+		};
+	}
+
+	private boolean isMoveAllowed(TabbedView sourceView, Tab tab) {
+		if(isChildOf(this, tab.data().content())) {
+			Notification.show("Can't drag tab to own content!", 2000, Position.MIDDLE);
+			return false;
+		}
+		return sourceView == this || isDropTarget();
+	}
+
+	private boolean isChildOf(Component child, Component parent) {
+		if(child == parent) return true;
+		Optional<Component> optionalParent = child.getParent();
+		return optionalParent.isPresent() ? isChildOf(optionalParent.get(), parent) : false;
+	}
+
+	private void closeTabDelayed(final Tab tab) {
+		var data = tabData.get(tab);
+		data.close(() -> closeTabInternal(tab, data));
+	}
+
+	private void closeTabInternal(final Tab tab, EnhancedViewData data) {
+		boolean current = data == activeData;
+		Tab next = null;
+		if(current) {
+			int idx = tabs.indexOf(tab);
+			int count = tabs.getComponentCount();
+			if(count == 1) {
+				// no next
+			} else if(idx == count-1) {
+				next = (Tab)tabs.getComponentAt(idx-1);
+			} else {
+				next = (Tab)tabs.getComponentAt(idx+1);
+			}
+		} else {
+			next = tabData.entrySet().stream().filter(e -> e.getValue() == activeData).findFirst().get().getKey();
+		}
+		// Remove
+		tabData.remove(tab);
+		removeData(data);
+		var dropTarget = tabToRegistration.remove(tab);
+		
+		if(dropTarget != null) dropTarget.remove();
+		tabs.remove(tab);
+		// Select next one
+		if(next != null) {
+			if(activeData != null) activeData.setVisible(false);
+			tabs.setSelectedTab(next);
+			activeData = tabData.get(next);
+			activeData.setVisible(true);
+		}
+		if(getAllTabs().isEmpty()) setGlobalTarget(true);
+	}
+
+	private void dragStart(Tab draggedTab) {
+		if(!isDropTarget()) {
+			for(var tab : getAllTabs()) {
+				tab.setActive(true);
+			}
+			if(tabsDropTarget != null) tabsDropTarget.setActive(true);
+		}
+		draggedTab.setActive(false);
+	}
+
+	private void dragEnd(Tab draggedTab) {
+		if(!isDropTarget()) {
+			for(var tab : getAllTabs()) {
+				tab.setActive(false);
+			}
+			if(tabsDropTarget != null) tabsDropTarget.setActive(false);
+		}
+		draggedTab.setActive(isDropTarget());
+	}
+
+	private Registration addDropTarget(final Tab tab) {
+		tab.setDropEffect(DropEffect.MOVE);
+		return tab.addDropListener(event -> {
+			if(event.getDragSourceComponent().isPresent()) {
+				var data = event.getDragSourceComponent().get();
+				if(data instanceof Tab) {
+					moveTab((Tab)data, tab);
+				}
+			}
+		});
+	}
+
+	private Map<String, Tab> getTabIdMap() {
+		LinkedHashMap<String, Tab> map = new LinkedHashMap<>();
+		for(Tab tab : tabData.keySet()) map.put(tab.getLabelOrId(), tab);
+		return map;
+	}
+
+	private void addData(EnhancedViewData data) {
+		addComponent(contents, () -> data.content());
+		addComponent(toolbars, () -> data.toolbar());
+		addComponent(headers, () -> data.header());
+		addComponent(footers, () -> data.footer());
+	}
+
+	private void removeData(EnhancedViewData data) {
+		removeComponent(contents, () -> data.content());
+		removeComponent(toolbars, () -> data.toolbar());
+		removeComponent(headers, () -> data.header());
+		removeComponent(footers, () -> data.footer());
+	}
+	
+	private void addComponent(HasComponents parent, Supplier<Component> componentSupplier) {
+		if(parent != null) {
+			Component component = componentSupplier.get();
+			if(component != null && component.getParent().filter(parent::equals).isEmpty()) {
+				parent.add(component);
+			}
+		}
+	}
+
+	private void removeComponent(HasComponents parent, Supplier<Component> componentSupplier) {
+		if(parent != null) {
+			Component component = componentSupplier.get();
+			if(component != null) {
+				parent.remove(component);
+			}
+		}
+	}
+
+	protected Map<Tab, EnhancedViewData> getTabData() {
+		return tabData;
+	}
+
+	protected EnhancedViewData getTabData(Tab tab) {
+		return tabData.get(tab);
+	}
+
+	/**
+	 * Get given Tab (if object is Tab) or Tab with given Id (when object is String) or Tab associated to given Object
+	 * @param caption
+	 * @return
+	 */
+	protected Tab getTab(Object object) {
+		if(object instanceof Tab) return (Tab)object;
+		if(object instanceof String) {
+			var labelOrId = (String)object;
+			for(Tab tab : tabData.keySet()) {
+				if(labelOrId.equals(tab.getLabelOrId())) return tab;
+			}
+		} else {
+			for(Entry<Tab, EnhancedViewData> entry: tabData.entrySet()) {
+				if(object == entry.getValue().getObject()) return entry.getKey();
+			}
+		}
+		return null;
+	}
+	
+	public Tabs getInternalTabs() {
+		return tabs;
+	}
+
+	public HorizontalLayout getInternalTopBar() {
+		return topBar;
+	}
+	
+	public void addToToolbar(Component... components) {
+		for(Component component : components) toolbar.add(component);
+	}
+
+	public void removeFromToolbar(Component... components) {
+		for(Component component : components) toolbar.remove(component);
+	}
+}
