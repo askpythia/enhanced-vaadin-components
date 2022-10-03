@@ -9,6 +9,8 @@ import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.textfield.TextArea;
 
 import at.metainfo.color.Css3Color;
+import at.metainfo.enhanced.Closeable;
+import at.metainfo.enhanced.IEnhancedView;
 import at.metainfo.utilities.IGuiUtilities;
 
 public class TextAreaView implements IEnhancedView, IGuiUtilities {
@@ -27,6 +29,7 @@ public class TextAreaView implements IEnhancedView, IGuiUtilities {
 			textArea.getStyle().set("background-color", color.hexCode());
 		}
 		textArea.setValue(faker.chuckNorris().fact() + "\n");
+		textArea.getElement().getStyle().set("padding", "0");
 		textArea.setSizeFull();
 	}
 

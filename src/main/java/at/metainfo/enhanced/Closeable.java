@@ -1,4 +1,4 @@
-package at.metainfo.tabbedView;
+package at.metainfo.enhanced;
 
 public interface Closeable {
 

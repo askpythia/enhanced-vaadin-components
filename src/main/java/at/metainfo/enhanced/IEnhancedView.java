@@ -1,4 +1,4 @@
-package at.metainfo.tabbedView;
+package at.metainfo.enhanced;
 
 import com.vaadin.flow.component.Component;
 
@@ -16,6 +16,10 @@ public interface IEnhancedView extends IGuiUtilities {
 
 	default Object object() {
 		return this;
+	}
+
+	default boolean isCloseable() {
+		return close(null);
 	}
 
 	default boolean close(Closeable closeable) {

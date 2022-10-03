@@ -1,4 +1,4 @@
-package at.metainfo.tabbedView;
+package at.metainfo.enhanced;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -20,10 +20,6 @@ import com.vaadin.flow.component.dnd.DropEffect;
 import com.vaadin.flow.component.dnd.DropTarget;
 import com.vaadin.flow.component.dnd.EffectAllowed;
 import com.vaadin.flow.component.html.Div;
-import com.vaadin.flow.component.html.Image;
-import com.vaadin.flow.component.icon.Icon;
-import com.vaadin.flow.component.icon.IconFactory;
-import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.Notification.Position;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
@@ -35,7 +31,7 @@ import com.vaadin.flow.shared.Registration;
 import at.metainfo.utilities.IGuiUtilities;
 import at.metainfo.utilities.NlsLabel;
 
-public class TabbedView extends VerticalLayout implements IGuiUtilities {
+public class TabbedView extends VerticalLayout implements IGuiUtilities, HasIconProvider {
 	private static final long serialVersionUID = 1L;
 
 	private Tabs tabs;
@@ -55,62 +51,9 @@ public class TabbedView extends VerticalLayout implements IGuiUtilities {
 	private boolean dropTarget = false;
 	private Component minimize_handle = null;
 	private Component maximize_handle = null;
-	private Function<TabbedViewIcon, Component> iconProvider;
+	private Function<ViewIcon, Component> iconProvider;
 
-	public enum TabbedViewIcon {
-		tabCloseIcon(() -> {
-			//Icon icon = VaadinIcon.CLOSE.create();
-			Icon icon = new Icon("lumo", "cross");
-			icon.setColor(DEFAULT_ICON_COLOR);
-			icon.getStyle().set("cursor", "pointer");
-			return icon;
-		}),
-		tabsMinimizeIcon(() -> {
-			//return new Icons8("minus-square").size("24px").color("#990000");
-			Icon icon = new Icon("vaadin", "minus-circle-o");
-			icon.setSize(DEFAULT_ICON_SIZE);
-			icon.setColor(DEFAULT_ICON_COLOR);
-			icon.getStyle().set("cursor", "pointer");
-			return icon;
-		}),
-		tabsMaximizeIcon(() -> {
-			//return new Icons8("plus-square").size("24px").color("#990000");
-			Icon icon = new Icon("vaadin", "plus-circle-o");
-			icon.setSize(DEFAULT_ICON_SIZE);
-			icon.setColor(DEFAULT_ICON_COLOR);
-			icon.getStyle().set("cursor", "pointer");
-			return icon;
-		}),
-		tabsCloseIcon(() -> {
-			//return new Icons8("plus-square").size("24px").color("#990000");
-			Icon icon = new Icon("vaadin", "close-circle-o");
-			icon.setSize(DEFAULT_ICON_SIZE);
-			icon.setColor(DEFAULT_ICON_COLOR);
-			icon.getStyle().set("cursor", "pointer");
-			return icon;
-		}),
-		;
-
-		private final Supplier<Object> default_;
-
-		private TabbedViewIcon(Supplier<Object> default_) {
-			this.default_ = default_;
-		}
-
-		public Component getIconComponent() {
-			Object object = default_.get();
-			if(object instanceof String) {
-				return new Image((String)object, name());
-			} else if(object instanceof IconFactory) {
-				return ((IconFactory)object).create();
-			} else if(object instanceof Component){
-				return (Component)object;
-			} else {
-				return VaadinIcon.QUESTION.create();
-			}
-		}
-	}
-
+	
 	@SuppressWarnings("serial")
 	public static class Tab extends com.vaadin.flow.component.tabs.Tab implements DragSource<Tab>, DropTarget<Tab> {
 
@@ -172,7 +115,7 @@ public class TabbedView extends VerticalLayout implements IGuiUtilities {
 		this(null);
 	}
 
-	public TabbedView(Function<TabbedViewIcon, Component> iconProvider) {
+	public TabbedView(Function<ViewIcon, Component> iconProvider) {
 		this.iconProvider = iconProvider == null ? key -> key.getIconComponent() : iconProvider;
 		setSizeFull();
 		setPadding(false);
@@ -190,9 +133,9 @@ public class TabbedView extends VerticalLayout implements IGuiUtilities {
 		addToolbarStyle(toolbar);
 
 		DomEventListener listener = event -> switchMinimized();
-		minimize_handle = getIcon(TabbedViewIcon.tabsMinimizeIcon);
+		minimize_handle = getIcon(ViewIcon.tabsMinimizeIcon);
 		minimize_handle.getElement().addEventListener("click", listener); 
-		maximize_handle = getIcon(TabbedViewIcon.tabsMaximizeIcon);
+		maximize_handle = getIcon(ViewIcon.tabsMaximizeIcon);
 		maximize_handle.getElement().addEventListener("click", listener);
 
 		topBar = new HorizontalLayout(tabs, toolbars, toolbar);
@@ -219,11 +162,6 @@ public class TabbedView extends VerticalLayout implements IGuiUtilities {
 			activeData = selectedData;
 			tabSelectionListener.forEach(listener -> listener.accept(event));
 		}
-	}
-
-	private Component getIcon(TabbedViewIcon key) {
-		Component icon = iconProvider.apply(key);
-		return icon == null ? key.getIconComponent() : icon;
 	}
 
 	private void addToolbarStyle(Component component) {
@@ -432,7 +370,7 @@ public class TabbedView extends VerticalLayout implements IGuiUtilities {
 		boolean hasComponents = tabComponents != null && tabComponents.length > 0;
 		final Tab tab = hasComponents ? new Tab(caption, tabComponents) : new Tab(caption, new NlsLabel(caption));
 		if(closeable) {
-			Component close = getIcon(TabbedViewIcon.tabCloseIcon);
+			Component close = getIcon(ViewIcon.tabCloseIcon);
 			close.getElement().addEventListener("click", click -> {
 				tab.close();
 			});
@@ -501,7 +439,11 @@ public class TabbedView extends VerticalLayout implements IGuiUtilities {
 
 	private void closeTabDelayed(final Tab tab) {
 		var data = tabData.get(tab);
-		data.close(() -> closeTabInternal(tab, data));
+		if(data == null) {
+			closeTabInternal(tab, null);
+		} else {
+			data.close(() -> closeTabInternal(tab, data));
+		}
 	}
 
 	private void closeTabInternal(final Tab tab, EnhancedViewData data) {
@@ -576,17 +518,21 @@ public class TabbedView extends VerticalLayout implements IGuiUtilities {
 	}
 
 	private void addData(EnhancedViewData data) {
-		addComponent(contents, () -> data.content());
-		addComponent(toolbars, () -> data.toolbar());
-		addComponent(headers, () -> data.header());
-		addComponent(footers, () -> data.footer());
+		if(data != null) {
+			addComponent(contents, () -> data.content());
+			addComponent(toolbars, () -> data.toolbar());
+			addComponent(headers, () -> data.header());
+			addComponent(footers, () -> data.footer());
+		}
 	}
 
 	private void removeData(EnhancedViewData data) {
-		removeComponent(contents, () -> data.content());
-		removeComponent(toolbars, () -> data.toolbar());
-		removeComponent(headers, () -> data.header());
-		removeComponent(footers, () -> data.footer());
+		if(data != null) {
+			removeComponent(contents, () -> data.content());
+			removeComponent(toolbars, () -> data.toolbar());
+			removeComponent(headers, () -> data.header());
+			removeComponent(footers, () -> data.footer());
+		}
 	}
 	
 	private void addComponent(HasComponents parent, Supplier<Component> componentSupplier) {
@@ -649,5 +595,10 @@ public class TabbedView extends VerticalLayout implements IGuiUtilities {
 
 	public void removeFromToolbar(Component... components) {
 		for(Component component : components) toolbar.remove(component);
+	}
+
+	@Override
+	public Function<ViewIcon, Component> iconProvider() {
+		return iconProvider;
 	}
 }

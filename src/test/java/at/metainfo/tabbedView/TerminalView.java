@@ -12,6 +12,8 @@ import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.theme.lumo.LumoIcon;
 
+import at.metainfo.enhanced.Closeable;
+import at.metainfo.enhanced.IEnhancedView;
 import at.metainfo.utilities.IGuiUtilities;
 
 public class TerminalView implements IEnhancedView, IGuiUtilities {
@@ -99,7 +101,7 @@ public class TerminalView implements IEnhancedView, IGuiUtilities {
 		xterm.setCursorBlink(true);
 		xterm.setFitOnResize(true);
 		xterm.setRightClickSelectsWord(true);
-		
+
 		xterm.setRendererType(RendererType.CANVAS);
 		//xterm.setRendererType(RendererType.DOM);
 

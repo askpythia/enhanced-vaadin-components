@@ -1,8 +1,6 @@
 package at.metainfo.tabbedView;
 
-import static at.metainfo.color.Css3Color.Red;
-import static at.metainfo.color.Css3Color.White;
-import static at.metainfo.color.Css3Color.Yellow;
+import static at.metainfo.color.Css3Color.*;
 
 import java.util.Locale;
 import java.util.function.Function;
@@ -18,7 +16,9 @@ import com.vaadin.flow.component.splitlayout.SplitLayout;
 import com.vaadin.flow.router.Route;
 
 import at.metainfo.color.Css3Color;
-import at.metainfo.tabbedView.TabbedView.TabbedViewIcon;
+import at.metainfo.enhanced.EnhancedDialog;
+import at.metainfo.enhanced.HasIconProvider.ViewIcon;
+import at.metainfo.enhanced.TabbedView;
 import at.metainfo.utilities.IGuiUtilities;
 
 @SuppressWarnings("serial")
@@ -94,13 +94,16 @@ public class TabbedViewSample extends Div implements IGuiUtilities {
 			tabbedView.addView(terminal);
 			tabbedView.selectTab(terminal);
 		});
-		tabbedView.addToToolbar(colorSelection, add, term);
+		Button dialog = new Button("Dialog", click -> {
+			new EnhancedDialog(new TextAreaView(Cyan, Locale.ENGLISH)).open();
+		});
+		tabbedView.addToToolbar(colorSelection, add, term, dialog);
 		tabbedView.setMinimizeable(true);
 
 		return tabbedView;
 	}
 
-	private Function<TabbedViewIcon, Component> getIconProvider() {
+	private Function<ViewIcon, Component> getIconProvider() {
 		return key -> {
 			switch(key) {
 			case tabsMinimizeIcon:

@@ -1,4 +1,4 @@
-package at.metainfo.tabbedView;
+package at.metainfo.enhanced;
 
 import java.util.function.Supplier;
 
@@ -95,5 +95,9 @@ public class EnhancedViewData {
 		for(var obj : data) {
 			if(obj instanceof Component) ((Component)obj).setVisible(visible);
 		}
+	}
+	
+	public IEnhancedView getView() {
+		return view;
 	}
 }
