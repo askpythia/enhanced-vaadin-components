@@ -10,10 +10,10 @@
 	</parent>
 
 	<groupId>at.metainfo</groupId>
-	<artifactId>tabbedView</artifactId>
+	<artifactId>metainfo-vaadin-components</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>tabbedView</name>
-	<description>A Eclipse like tabbed view</description>
+	<name>metainfo-vaadin-components</name>
+	<description>Eclipse like tabbed views and dialog</description>
 
 	<properties>
 	<!--
