@@ -31,8 +31,8 @@ import com.vaadin.flow.shared.Registration;
 import at.metainfo.utilities.IGuiUtilities;
 import at.metainfo.utilities.NlsLabel;
 
-public class EnhancedTabs extends VerticalLayout implements IGuiUtilities, HasIconProvider {
-	private static final long serialVersionUID = 1L;
+public class EnhancedTabs extends VerticalLayout implements IEnhancedViewContainer, IGuiUtilities, HasIconProvider {
+	private static final long serialVersionUID = 2733605172349911727L;
 
 	private Tabs tabs;
 	private DropTarget<Tabs> tabsDropTarget;
@@ -40,11 +40,13 @@ public class EnhancedTabs extends VerticalLayout implements IGuiUtilities, HasIc
 	private HorizontalLayout toolbars;
 	private Div headers;
 	private Div footers;
-	private HorizontalLayout toolbar; 
+	private HorizontalLayout toolbar;
 	private HorizontalLayout topBar;
+	
 	private EnhancedViewData activeData;
 	private Map<Tab, EnhancedViewData> tabData = new LinkedHashMap<>();
 	private Map<Tab, Registration> tabToRegistration = new HashMap<>();
+	
 	private List<Consumer<SelectedChangeEvent>> tabSelectionListener = new ArrayList<>();
 	private List<Consumer<Boolean>> tabsOpenCloseListener = new ArrayList<>();
 	private boolean draggable = false;
@@ -53,7 +55,6 @@ public class EnhancedTabs extends VerticalLayout implements IGuiUtilities, HasIc
 	private Component maximize_handle = null;
 	private Function<ViewIcon, Component> iconProvider;
 
-	
 	@SuppressWarnings("serial")
 	public static class Tab extends com.vaadin.flow.component.tabs.Tab implements DragSource<Tab>, DropTarget<Tab> {
 
@@ -296,7 +297,7 @@ public class EnhancedTabs extends VerticalLayout implements IGuiUtilities, HasIc
 		return Registration.once(() -> tabsOpenCloseListener.remove(listener));
 	}
 
-	public Tab addView(IEnhancedView enhancedView, Component... tabComponents) {
+	public Tab addViewTab(IEnhancedView enhancedView, Component... tabComponents) {
 		EnhancedViewData data = new EnhancedViewData(enhancedView);
 		Tab tab = createTab(data.getTitle(), enhancedView.isCloseable(), tabComponents);
 		Component titleIcon = data.getTitleIcon();
@@ -311,14 +312,14 @@ public class EnhancedTabs extends VerticalLayout implements IGuiUtilities, HasIc
 
 	public Tab addTab(String caption, Object object, Function<Closeable, Boolean> onClose, Component content, Component... tabComponents) {
 		if(content instanceof IEnhancedView) {
-			return addView((IEnhancedView)content, tabComponents);
+			return addViewTab((IEnhancedView)content, tabComponents);
 		} else {
 			return addTab(caption, object, onClose, () -> content, tabComponents);
 		}
 	}
 
 	public Tab addTab(String caption, Object object, Function<Closeable, Boolean> onClose, Supplier<Component> contentSupplier, Component... tabComponents) {
-		return addView(new IEnhancedView() {
+		return addViewTab(new IEnhancedView() {
 			@Override
 			public String title() {
 				return caption;
@@ -628,5 +629,10 @@ public class EnhancedTabs extends VerticalLayout implements IGuiUtilities, HasIc
 	@Override
 	public Function<ViewIcon, Component> iconProvider() {
 		return iconProvider;
+	}
+
+	@Override
+	public void addView(IEnhancedView view) {
+		addViewTab(view);
 	}
 }
