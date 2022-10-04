@@ -79,6 +79,12 @@ public class TabbedView extends VerticalLayout implements IGuiUtilities, HasIcon
 			tabbedView(this).closeTabDelayed(this);
 		}
 
+		protected TabbedView removeFromTabbedView() {
+			TabbedView tabbedView = tabbedView(this);
+			tabbedView.removeTab(this);
+			return tabbedView;
+		}
+
 		@Override
 		public String toString() {
 			return "TAB " + labelOrId;
@@ -109,6 +115,10 @@ public class TabbedView extends VerticalLayout implements IGuiUtilities, HasIcon
 				par = par.getParent().orElse(null);
 		}
 		return (TabbedView)par;
+	}
+
+	protected void removeTab(Tab tab) {
+		closeTabInternal(tab, tab.data());
 	}
 
 	public TabbedView() {
@@ -386,8 +396,13 @@ public class TabbedView extends VerticalLayout implements IGuiUtilities, HasIcon
 			TabbedView tabbedView = tabbedView(tab);
 			if(tabbedView != null) tabbedView.dragEnd(tab);
 		});
+		tab.getElement().addEventListener("dblclick", event -> moveToDialog(tab));
 		tabToRegistration.put(tab, addDropTarget(tab));
 		return tab;
+	}
+
+	private void moveToDialog(Tab tab) {
+		new EnhancedDialog(tab).open();
 	}
 
 	private void moveTab(Tab tab, Tab destination) {
@@ -421,6 +436,14 @@ public class TabbedView extends VerticalLayout implements IGuiUtilities, HasIcon
 			}
 			tabs.setSelectedTab(tab);
 		};
+	}
+
+	protected void addForeignTab(Tab tab, EnhancedViewData data) {
+		tabData.put(tab, data);
+		addData(data);
+		tabs.add(tab);
+		tabToRegistration.put(tab, addDropTarget(tab));
+		tabs.setSelectedTab(tab);
 	}
 
 	private boolean isMoveAllowed(TabbedView sourceView, Tab tab) {
