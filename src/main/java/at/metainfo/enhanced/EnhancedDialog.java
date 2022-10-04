@@ -7,6 +7,8 @@ import com.vaadin.flow.component.dependency.CssImport;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
+import com.vaadin.flow.dom.Element;
+import com.vaadin.flow.component.orderedlayout.FlexComponent.Alignment;
 
 import at.metainfo.enhanced.EnhancedTabs.Tab;
 import at.metainfo.utilities.NlsLabel;
@@ -95,9 +97,15 @@ public class EnhancedDialog extends Dialog implements IEnhancedViewContainer, Ha
 	 * The title header gets the class draggable so the dialog can be dragged using the title header
 	 */
 	private void addViewInternal() {
-		HorizontalLayout toolbar = toolbar();
-		HorizontalLayout title = hl(data.getTitleIcon(), new NlsLabel(data.getTitle()), toolbar);
+		add(data.content());
+		HorizontalLayout title = hl(data.getTitleIcon(), new NlsLabel(data.getTitle()));
+		title.setAlignItems(Alignment.CENTER);
 		title.addClassNames("draggable");
+		Component toolbar = data.toolbar();
+		if(toolbar != null) {
+			toolbar.getElement().getStyle().set("margin-left", "auto");
+			title.add(toolbar);
+		}
 		if(data.getView().isCloseable()) {
 			// If view is closeable don't react on forced close by vaadin dialog
 			setCloseOnEsc(false);
@@ -108,17 +116,19 @@ public class EnhancedDialog extends Dialog implements IEnhancedViewContainer, Ha
 			}, Key.ESCAPE).listenOn(this);
 			// Add close icon using close-handler
 			Component close = getIcon(ViewIcon.tabCloseIcon);
-			close.getElement().addEventListener("click", click -> {
+			Element closeElement = close.getElement();
+			closeElement.addEventListener("click", click -> {
 				data.close(() -> close());
 			});
-			close.getElement().getStyle().set("margin-left", "auto");
+			if(toolbar == null) {
+				closeElement.getStyle().set("margin-left", "auto");
+			}
 			title.add(close);
 		} else {
 			// If view is not closeable the dialog can be (forced) closed at least by escape
 			setCloseOnEsc(true);
 		}
 		// Build title and add all view components to the dialog regions
-		add(data.content());
 		VerticalLayout header = vl(title);
 		Component viewHeader = data.header();
 		if(viewHeader != null) header.add(header);
@@ -128,6 +138,10 @@ public class EnhancedDialog extends Dialog implements IEnhancedViewContainer, Ha
 		// When view was moved from an EnhancedTabs to the dialog add a double click listener on the title to move it back
 		if(tabbedView != null) {
 			title.getElement().addEventListener("dblclick", event -> moveBackToTabs());
+		}
+		// Stop the double click when over the toolbar
+		if(toolbar != null) {
+			toolbar.getElement().addEventListener("dblclick", event -> {}).addEventData("event.stopPropagation()");
 		}
 	}
 

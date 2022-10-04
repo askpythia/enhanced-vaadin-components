@@ -23,7 +23,10 @@ public interface IEnhancedView extends IGuiUtilities {
 	}
 
 	default boolean close(Closeable closeable) {
-		return false;
+		if(closeable != null) {
+			closeable.close();
+		}
+		return true;
 	}
 
 	default void resize() {
