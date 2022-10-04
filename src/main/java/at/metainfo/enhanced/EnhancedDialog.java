@@ -8,7 +8,7 @@ import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 
-import at.metainfo.enhanced.TabbedView.Tab;
+import at.metainfo.enhanced.EnhancedTabs.Tab;
 import at.metainfo.utilities.NlsLabel;
 
 @CssImport(value = "./styles/enhanced-dialog-styles.css", themeFor = "vaadin-dialog-overlay")
@@ -17,7 +17,7 @@ public class EnhancedDialog extends Dialog implements IEnhancedViewContainer, Ha
 
 	private EnhancedViewData data;
 	private Tab tab;
-	private TabbedView tabbedView;
+	private EnhancedTabs tabbedView;
 
 	public EnhancedDialog(IEnhancedView view) {
 		initialize();
@@ -29,7 +29,7 @@ public class EnhancedDialog extends Dialog implements IEnhancedViewContainer, Ha
 		setModal(false);
 		this.tab = tab;
 		this.data = tab.data();
-		this.tabbedView = tab.removeFromTabbedView();
+		this.tabbedView = tab.removeFromEnhancedTabs();
 		data.setVisible(true);
 		addViewInternal();
 		setHeight("80vh");

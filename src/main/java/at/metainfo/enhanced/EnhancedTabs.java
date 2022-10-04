@@ -31,7 +31,7 @@ import com.vaadin.flow.shared.Registration;
 import at.metainfo.utilities.IGuiUtilities;
 import at.metainfo.utilities.NlsLabel;
 
-public class TabbedView extends VerticalLayout implements IGuiUtilities, HasIconProvider {
+public class EnhancedTabs extends VerticalLayout implements IGuiUtilities, HasIconProvider {
 	private static final long serialVersionUID = 1L;
 
 	private Tabs tabs;
@@ -72,17 +72,17 @@ public class TabbedView extends VerticalLayout implements IGuiUtilities, HasIcon
 		}
 
 		public EnhancedViewData data() {
-			return tabbedView(this).getTabData(this);
+			return enhancedTabs(this).getTabData(this);
 		}
 
 		public void close() {
-			tabbedView(this).closeTabDelayed(this);
+			enhancedTabs(this).closeTabDelayed(this);
 		}
 
-		protected TabbedView removeFromTabbedView() {
-			TabbedView tabbedView = tabbedView(this);
-			tabbedView.removeTab(this);
-			return tabbedView;
+		protected EnhancedTabs removeFromEnhancedTabs() {
+			EnhancedTabs enhancedTabs = enhancedTabs(this);
+			enhancedTabs.removeTab(this);
+			return enhancedTabs;
 		}
 
 		@Override
@@ -109,23 +109,23 @@ public class TabbedView extends VerticalLayout implements IGuiUtilities, HasIcon
 		}
 	}
 
-	private static TabbedView tabbedView(Tab tab) {
+	private static EnhancedTabs enhancedTabs(Tab tab) {
 		Component par = tab.getParent().orElse(null);
-		while (par != null && !(par instanceof TabbedView)) {
+		while (par != null && !(par instanceof EnhancedTabs)) {
 				par = par.getParent().orElse(null);
 		}
-		return (TabbedView)par;
+		return (EnhancedTabs)par;
 	}
 
 	protected void removeTab(Tab tab) {
 		closeTabInternal(tab, tab.data());
 	}
 
-	public TabbedView() {
+	public EnhancedTabs() {
 		this(null);
 	}
 
-	public TabbedView(Function<ViewIcon, Component> iconProvider) {
+	public EnhancedTabs(Function<ViewIcon, Component> iconProvider) {
 		this.iconProvider = iconProvider == null ? key -> key.getIconComponent() : iconProvider;
 		setSizeFull();
 		setPadding(false);
@@ -389,12 +389,12 @@ public class TabbedView extends VerticalLayout implements IGuiUtilities, HasIcon
 		tab.setEffectAllowed(EffectAllowed.MOVE);
 		tab.setDraggable(isDraggable());
 		tab.addDragStartListener(event -> {
-			TabbedView tabbedView = tabbedView(tab);
-			if(tabbedView != null) tabbedView.dragStart(tab);
+			EnhancedTabs enhancedTabs = enhancedTabs(tab);
+			if(enhancedTabs != null) enhancedTabs.dragStart(tab);
 		});
 		tab.addDragEndListener(event -> {
-			TabbedView tabbedView = tabbedView(tab);
-			if(tabbedView != null) tabbedView.dragEnd(tab);
+			EnhancedTabs enhancedTabs = enhancedTabs(tab);
+			if(enhancedTabs != null) enhancedTabs.dragEnd(tab);
 		});
 		tab.getElement().addEventListener("dblclick", event -> moveToDialog(tab));
 		tabToRegistration.put(tab, addDropTarget(tab));
@@ -407,7 +407,7 @@ public class TabbedView extends VerticalLayout implements IGuiUtilities, HasIcon
 
 	private void moveTab(Tab tab, Tab destination) {
 		if(tab == destination) return;
-		TabbedView sourceView = tabbedView(tab);
+		EnhancedTabs sourceView = enhancedTabs(tab);
 		if(sourceView != null) {
 			if(!isMoveAllowed(sourceView, tab)) return;
 			if(sourceView != this) {
@@ -451,7 +451,7 @@ public class TabbedView extends VerticalLayout implements IGuiUtilities, HasIcon
 		tabs.setSelectedTab(tab);
 	}
 
-	private boolean isMoveAllowed(TabbedView sourceView, Tab tab) {
+	private boolean isMoveAllowed(EnhancedTabs sourceView, Tab tab) {
 		if(isChildOf(this, tab.data().content())) {
 			Notification.show("Can't drag tab to own content!", 2000, Position.MIDDLE);
 			return false;
