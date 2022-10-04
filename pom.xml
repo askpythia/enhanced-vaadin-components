@@ -13,7 +13,7 @@
 	<artifactId>metainfo-vaadin-components</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>metainfo-vaadin-components</name>
-	<description>Eclipse like tabbed views and dialog</description>
+	<description>Eclipse like tabbed views, dialogs and other widgets</description>
 
 	<properties>
 	<!--
@@ -41,19 +41,6 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-test</artifactId>
 			<scope>test</scope>
-		</dependency>
-
-		<dependency>
-			<groupId>com.github.javafaker</groupId>
-			<artifactId>javafaker</artifactId>
-			<version>1.0.2</version>
-			<scope>test</scope>
-		</dependency>
-
-		<dependency>
-			<groupId>com.flowingcode.addons</groupId>
-			<artifactId>xterm-console</artifactId>
-			<version>2.0.3</version>
 		</dependency>
 	</dependencies>
 

@@ -298,7 +298,7 @@ public class TabbedView extends VerticalLayout implements IGuiUtilities, HasIcon
 
 	public Tab addView(IEnhancedView enhancedView, Component... tabComponents) {
 		EnhancedViewData data = new EnhancedViewData(enhancedView);
-		Tab tab = createTab(data.getTitle(), enhancedView.close(null), tabComponents);
+		Tab tab = createTab(data.getTitle(), enhancedView.isCloseable(), tabComponents);
 		Component titleIcon = data.getTitleIcon();
 		if(titleIcon != null) {
 			titleIcon.getElement().getStyle().set("margin-right", "0.2rem");
@@ -441,6 +441,11 @@ public class TabbedView extends VerticalLayout implements IGuiUtilities, HasIcon
 	protected void addForeignTab(Tab tab, EnhancedViewData data) {
 		tabData.put(tab, data);
 		addData(data);
+		Component titleIcon = data.getTitleIcon();
+		if(titleIcon != null) {
+			titleIcon.getElement().getStyle().set("margin-right", "0.2rem");
+			tab.getElement().insertChild(0, titleIcon.getElement());
+		}
 		tabs.add(tab);
 		tabToRegistration.put(tab, addDropTarget(tab));
 		tabs.setSelectedTab(tab);
