@@ -21,7 +21,7 @@
 		<vaadin.version>14.8.18</vaadin.version>
 	-->
 		<java.version>17</java.version>
-		<vaadin.version>23.2.2</vaadin.version>
+		<vaadin.version>23.2.3</vaadin.version>
 	</properties>
 
 	<repositories>
