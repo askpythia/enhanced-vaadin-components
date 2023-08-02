@@ -52,7 +52,7 @@ public class Colors {
 		return colors;
 	}
 	
-	public static void main(String[] args) throws FileNotFoundException, IOException {
+	public static void main1(String[] args) throws FileNotFoundException, IOException {
 		try (BufferedReader br = new BufferedReader(new FileReader(new File("d:\\Work\\css3colors.txt")))) {
 			Map<String, String> codes = new LinkedHashMap<>();
 			String line = null;

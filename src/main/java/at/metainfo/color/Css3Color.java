@@ -191,7 +191,7 @@ public enum Css3Color {
 		return color.toString();
 	}
 	
-	public static void main(String[] args) throws FileNotFoundException, IOException {
+	public static void main1(String[] args) throws FileNotFoundException, IOException {
 		// Color Table from "https://www.cssportal.com/css3-color-names" copied to "Css3Color.txt" to get correct Literals for this enumeration
 		InputStream in = Css3Color.class.getResourceAsStream(Css3Color.class.getSimpleName() + ".txt");
 		try (BufferedReader br = new BufferedReader(new InputStreamReader(in, "UTF-8"))) {
