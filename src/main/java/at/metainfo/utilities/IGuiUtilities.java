@@ -32,7 +32,7 @@ public interface IGuiUtilities {
 		HorizontalLayout layout = new HorizontalLayout(components);
 		layout.setMargin(false);
 		layout.setPadding(false);
-		layout.setSizeFull();
+		layout.setWidthFull();
 		return layout;
 	}
 
